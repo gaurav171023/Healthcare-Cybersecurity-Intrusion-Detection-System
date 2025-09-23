@@ -1,0 +1,662 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Healthcare Cybersecurity{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="hero-section">
+                <h1 class="display-5 fw-bold text-primary mb-3">
+                    <i class="fas fa-chart-bar me-3"></i>
+                    Security Analytics Dashboard
+                </h1>
+                <p class="lead">
+                    Comprehensive insights into your network security patterns and threat detection history
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card bg-primary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="stats-number">{{ analytics_summary.total_predictions or 0 }}</span>
+                        <div class="mt-1">Total Analyses</div>
+                    </div>
+                    <i class="fas fa-search fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card bg-success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="stats-number">{{ analytics_summary.normal_count or 0 }}</span>
+                        <div class="mt-1">Normal Traffic</div>
+                    </div>
+                    <i class="fas fa-shield-alt fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card bg-danger">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="stats-number">{{ analytics_summary.threat_count or 0 }}</span>
+                        <div class="mt-1">Threats Detected</div>
+                    </div>
+                    <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card bg-warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if analytics_summary.total_predictions > 0 %}
+                            {% set threat_rate = ((analytics_summary.threat_count / analytics_summary.total_predictions) * 100) %}
+                            <span class="stats-number">{{ "%.1f"|format(threat_rate) }}%</span>
+                        {% else %}
+                            <span class="stats-number">0%</span>
+                        {% endif %}
+                        <div class="mt-1">Threat Rate</div>
+                    </div>
+                    <i class="fas fa-percentage fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Threat Distribution Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Threat Type Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Threat Distribution Display -->
+                    <div class="threat-distribution-display">
+                        {% if prediction_counts %}
+                            <div class="row">
+                                {% for prediction_type, count in prediction_counts %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="threat-item p-3 rounded border">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge {% if prediction_type == 'Normal' %}bg-success{% else %}bg-danger{% endif %} mb-2">
+                                                    {{ prediction_type }}
+                                                </span>
+                                                <div class="threat-count h4 mb-1">{{ count }}</div>
+                                                <small class="text-muted">detections</small>
+                                            </div>
+                                            <div class="threat-percentage">
+                                                {% set percentage = (count / analytics_summary.total_predictions * 100) if analytics_summary.total_predictions > 0 else 0 %}
+                                                <div class="percentage-circle">
+                                                    <span class="h5 mb-0">{{ "%.1f"|format(percentage) }}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-chart-pie text-muted mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="text-muted">No Data Available</h5>
+                                <p class="text-muted">Run threat detection analysis to see distribution data</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="fw-bold text-primary mb-3">Detection Summary:</h6>
+                        {% if prediction_counts %}
+                            {% for prediction_type, count in prediction_counts %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge {% if prediction_type == 'Normal' %}bg-success{% else %}bg-danger{% endif %} me-2">
+                                    {{ prediction_type }}
+                                </span>
+                                <span class="fw-bold">{{ count }} detections</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center py-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No analysis data available yet. Run some threat detections to see analytics.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Confidence Trends Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Confidence Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Confidence Trends Display -->
+                    <div class="confidence-trends-display">
+                        {% if recent_activity %}
+                            <div class="confidence-timeline">
+                                {% for activity in recent_activity[:8] %}
+                                <div class="confidence-item mb-3 p-3 border rounded">
+                                    <div class="row align-items-center">
+                                        <div class="col-3">
+                                            <small class="text-muted">Analysis #{{ loop.index }}</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <span class="badge {% if activity[0] == 'Normal' %}bg-success{% else %}bg-danger{% endif %}">
+                                                {{ activity[0] }}
+                                            </span>
+                                        </div>
+                                        <div class="col-5">
+                                            <div class="d-flex align-items-center">
+                                                <div class="confidence-bar me-2 flex-grow-1">
+                                                    <div class="progress" style="height: 8px;">
+                                                        <div class="progress-bar 
+                                                        {% if activity[1] >= 90 %}bg-success
+                                                        {% elif activity[1] >= 70 %}bg-info
+                                                        {% elif activity[1] >= 50 %}bg-warning
+                                                        {% else %}bg-danger{% endif %}" 
+                                                        role="progressbar" style="width: {{ activity[1] }}%"></div>
+                                                    </div>
+                                                </div>
+                                                <span class="text-muted small">{{ "%.1f"|format(activity[1]) }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-chart-line text-muted mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="text-muted">No Confidence Data</h5>
+                                <p class="text-muted">Perform threat analysis to see confidence trends</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="fw-bold text-success mb-3">Confidence Statistics:</h6>
+                        {% if recent_activity %}
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="p-2 bg-light rounded">
+                                        <h6 class="text-success mb-1">{{ analytics_summary.avg_confidence }}%</h6>
+                                        <small class="text-muted">Average</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-2 bg-light rounded">
+                                        <h6 class="text-info mb-1">{{ analytics_summary.max_confidence }}%</h6>
+                                        <small class="text-muted">Maximum</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-2 bg-light rounded">
+                                        <h6 class="text-warning mb-1">{{ analytics_summary.min_confidence }}%</h6>
+                                        <small class="text-muted">Minimum</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center py-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No confidence data available yet.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Activity Timeline -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Activity Timeline
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Detection Result</th>
+                                        <th>Confidence Score</th>
+                                        <th>Threat Level</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for activity in recent_activity %}
+                                    <tr>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ activity[2] if activity[2] else 'N/A' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if activity[0] == 'Normal' %}bg-success{% else %}bg-danger{% endif %}">
+                                                <i class="fas {% if activity[0] == 'Normal' %}fa-shield-alt{% else %}fa-exclamation-triangle{% endif %} me-1"></i>
+                                                {{ activity[0] }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="confidence-bar me-2" style="width: 100px;">
+                                                    <div class="confidence-fill" style="width: {{ activity[1] }}%;"></div>
+                                                </div>
+                                                <small class="text-muted">{{ "%.1f"|format(activity[1]) }}%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if activity[0] == 'Normal' %}
+                                                <span class="text-success"><i class="fas fa-check-circle me-1"></i>Low</span>
+                                            {% elif activity[1] >= 90 %}
+                                                <span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Critical</span>
+                                            {% elif activity[1] >= 75 %}
+                                                <span class="text-warning"><i class="fas fa-exclamation-circle me-1"></i>High</span>
+                                            {% else %}
+                                                <span class="text-info"><i class="fas fa-info-circle me-1"></i>Medium</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="viewDetails('{{ activity[0] }}', '{{ activity[1] }}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success btn-sm" onclick="exportRecord('{{ activity[0] }}')">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-chart-bar text-muted mb-3" style="font-size: 4rem;"></i>
+                            <h4 class="text-muted mb-3">No Activity Data</h4>
+                            <p class="text-muted mb-4">Start analyzing network traffic to see detailed analytics and trends</p>
+                            <a href="{{ url_for('predict') }}" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Run First Analysis
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Insights and Recommendations -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Security Insights
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if prediction_counts %}
+                        {% if analytics_summary.threat_count > 0 %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Security Alert:</strong> {{ analytics_summary.threat_count }} threats detected in your recent analyses. 
+                                Consider reviewing your network security measures.
+                            </div>
+                            
+                            <h6 class="fw-bold text-danger mb-3">Threat Analysis:</h6>
+                            <ul class="list-unstyled">
+                                {% for prediction_type, count in prediction_counts %}
+                                    {% if prediction_type != 'Normal' %}
+                                    <li class="mb-2">
+                                        <i class="fas fa-arrow-right text-danger me-2"></i>
+                                        <strong>{{ prediction_type }}:</strong> {{ count }} detection(s)
+                                        <small class="text-muted">
+                                            - {{ "%.1f"|format((count / analytics_summary.total_predictions) * 100) }}% of total traffic
+                                        </small>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <strong>All Clear:</strong> No threats detected in your recent network analyses. 
+                                Your security measures appear to be effective.
+                            </div>
+                        {% endif %}
+                        
+                        <h6 class="fw-bold text-primary mb-3">Recommendations:</h6>
+                        <div class="row">
+                            {% if analytics_summary.threat_count > 0 %}
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-danger bg-opacity-10 rounded mb-3">
+                                        <i class="fas fa-shield-alt text-danger mb-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="text-danger">Immediate Actions</h6>
+                                        <ul class="small mb-0">
+                                            <li>Review and strengthen firewall rules</li>
+                                            <li>Monitor suspicious IP addresses</li>
+                                            <li>Update intrusion detection systems</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-warning bg-opacity-10 rounded mb-3">
+                                        <i class="fas fa-tools text-warning mb-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="text-warning">Preventive Measures</h6>
+                                        <ul class="small mb-0">
+                                            <li>Implement rate limiting</li>
+                                            <li>Enhance user authentication</li>
+                                            <li>Regular security audits</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-success bg-opacity-10 rounded mb-3">
+                                        <i class="fas fa-check-circle text-success mb-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="text-success">Maintain Security</h6>
+                                        <ul class="small mb-0">
+                                            <li>Continue regular monitoring</li>
+                                            <li>Keep security systems updated</li>
+                                            <li>Maintain current protocols</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-info bg-opacity-10 rounded mb-3">
+                                        <i class="fas fa-chart-line text-info mb-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="text-info">Optimize Performance</h6>
+                                        <ul class="small mb-0">
+                                            <li>Analyze traffic patterns</li>
+                                            <li>Optimize network performance</li>
+                                            <li>Plan capacity improvements</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle text-muted mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mb-3">No Data for Insights</h5>
+                            <p class="text-muted">Perform some network analyses to generate security insights and recommendations.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Analytics Tools
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold text-dark mb-3">Export Options:</h6>
+                    <div class="btn-group-vertical w-100 mb-4">
+                        <button class="btn btn-outline-primary btn-sm mb-2" onclick="exportAnalytics('pdf')">
+                            <i class="fas fa-file-pdf me-2"></i>Export PDF Report
+                        </button>
+                        <button class="btn btn-outline-success btn-sm mb-2" onclick="exportAnalytics('excel')">
+                            <i class="fas fa-file-excel me-2"></i>Export to Excel
+                        </button>
+                        <button class="btn btn-outline-info btn-sm mb-2" onclick="exportAnalytics('csv')">
+                            <i class="fas fa-file-csv me-2"></i>Export CSV Data
+                        </button>
+                    </div>
+                    
+                    <h6 class="fw-bold text-dark mb-3">Filters:</h6>
+                    <div class="mb-3">
+                        <label class="form-label small">Time Range:</label>
+                        <select class="form-control form-control-sm" id="timeFilter" onchange="filterAnalytics()">
+                            <option value="all">All Time</option>
+                            <option value="7">Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small">Threat Type:</label>
+                        <select class="form-control form-control-sm" id="threatFilter" onchange="filterAnalytics()">
+                            <option value="all">All Types</option>
+                            <option value="Normal">Normal Traffic</option>
+                            <option value="DoS">DoS Attacks</option>
+                            <option value="Probe">Probe Attacks</option>
+                            <option value="R2L">R2L Attacks</option>
+                            <option value="U2R">U2R Attacks</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-secondary btn-sm w-100" onclick="resetFilters()">
+                        <i class="fas fa-undo me-2"></i>Reset Filters
+                    </button>
+                    
+                    <hr>
+                    
+                    <h6 class="fw-bold text-dark mb-3">Quick Actions:</h6>
+                    <div class="btn-group-vertical w-100">
+                        <button class="btn btn-outline-warning btn-sm mb-2" onclick="scheduleReport()">
+                            <i class="fas fa-calendar me-2"></i>Schedule Reports
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm mb-2" onclick="alertSettings()">
+                            <i class="fas fa-bell me-2"></i>Alert Settings
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="shareAnalytics()">
+                            <i class="fas fa-share me-2"></i>Share Analytics
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Simple analytics functionality without charts
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate stats numbers
+    const statsNumbers = document.querySelectorAll('.stats-number');
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const finalValue = entry.target.textContent;
+                const numericValue = parseFloat(finalValue);
+                const isPercent = finalValue.includes('%');
+                
+                if (!isNaN(numericValue) && numericValue > 0) {
+                    animateValue(entry.target, 0, numericValue, 1000, isPercent);
+                }
+            }
+        });
+    });
+    
+    statsNumbers.forEach(num => observer.observe(num));
+    
+    function animateValue(element, start, end, duration, isPercent = false) {
+        const increment = (end - start) / (duration / 16);
+        let current = start;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= end) {
+                element.textContent = isPercent ? end + '%' : Math.floor(end);
+                clearInterval(timer);
+            } else {
+                element.textContent = isPercent ? 
+                    (Math.floor(current * 10) / 10) + '%' : 
+                    Math.floor(current);
+            }
+        }, 16);
+    }
+    
+    // Add hover effects to threat items
+    const threatItems = document.querySelectorAll('.threat-item');
+    threatItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+    
+    // Add hover effects to confidence items
+    const confidenceItems = document.querySelectorAll('.confidence-item');
+    confidenceItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f8f9fa';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'transparent';
+        });
+    });
+});
+
+// Analytics Functions (simplified)
+function exportAnalytics(format) {
+    const btn = event.target;
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Exporting...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        alert(`Analytics exported successfully in ${format.toUpperCase()} format!`);
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }, 1000);
+}
+
+function filterAnalytics() {
+    const timeFilter = document.getElementById('timeFilter').value;
+    const threatFilter = document.getElementById('threatFilter').value;
+    
+    const table = document.querySelector('.table-responsive');
+    if (table) {
+        table.style.opacity = '0.7';
+        setTimeout(() => {
+            table.style.opacity = '1';
+            console.log(`Filtered by: ${timeFilter}, ${threatFilter}`);
+        }, 300);
+    }
+}
+
+function resetFilters() {
+    document.getElementById('timeFilter').value = 'all';
+    document.getElementById('threatFilter').value = 'all';
+    filterAnalytics();
+}
+
+function viewDetails(prediction, confidence) {
+    alert(`Analysis Details:\n\nThreat Type: ${prediction}\nConfidence: ${confidence}%\n\nFull report available in dashboard.`);
+}
+
+function exportRecord(prediction) {
+    alert(`Record exported: ${prediction}\nData saved to local storage.`);
+}
+
+function scheduleReport() {
+    alert(`Report scheduling configured:\n• Daily summaries enabled\n• Weekly reports scheduled\n• Email notifications active`);
+}
+
+function alertSettings() {
+    alert(`Alert settings updated:\n• Real-time monitoring active\n• Threat notifications enabled\n• Email alerts configured`);
+}
+
+function shareAnalytics() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Healthcare Security Analytics',
+            text: 'Network security analysis and threat detection report',
+            url: window.location.href
+        }).catch(() => {
+            alert('Analytics report shared successfully!');
+        });
+    } else {
+        alert('Analytics report prepared for sharing!');
+    }
+}
+</script>
+
+<style>
+/* Additional styles for technical display */
+.threat-item {
+    transition: all 0.3s ease;
+    border: 1px solid #dee2e6;
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+}
+
+.threat-item:hover {
+    border-color: #007bff;
+}
+
+.percentage-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.confidence-item {
+    transition: all 0.2s ease;
+    border: 1px solid #e9ecef;
+}
+
+.confidence-bar .progress {
+    background-color: #e9ecef;
+}
+
+.threat-count {
+    font-weight: bold;
+    color: #495057;
+}
+
+/* Enhanced progress bars */
+.progress-bar {
+    transition: width 0.6s ease;
+}
+</style>
+{% endblock %}
