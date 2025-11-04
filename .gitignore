@@ -20,7 +20,7 @@ Thumbs.db
 # Database and model files
 *.db
 *.sqlite3
-*.sav
+# Keep large model artifacts tracked for deployment (remove '*.sav' ignore)
 
 # VS Code settings
 .vscode/
