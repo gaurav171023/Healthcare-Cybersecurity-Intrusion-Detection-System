@@ -11,9 +11,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
+# Use absolute paths so files are found regardless of the current working directory
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'users.db')
+MODEL_PATH = os.path.join(BASE_DIR, 'model.sav')
+
 # Database setup
 def init_db():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,12 +52,13 @@ init_db()
 
 # Load the trained model and preprocessing components
 try:
-    model = joblib.load('model.sav')
+    model = joblib.load(MODEL_PATH)
     print("Model loaded successfully!")
-    
+
     # Load the correct feature names that match the trained model
+    FEATURE_NAMES_PATH = os.path.join(BASE_DIR, 'feature_names.sav')
     try:
-        feature_names = joblib.load('feature_names.sav')
+        feature_names = joblib.load(FEATURE_NAMES_PATH)
         print(f"Feature names loaded successfully! Model expects {len(feature_names)} features")
         print(f"Features: {feature_names[:5]}...")
     except FileNotFoundError:
@@ -106,7 +112,7 @@ def register():
         hashed_password = generate_password_hash(password)
         
         try:
-            conn = sqlite3.connect('users.db')
+            conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
             c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
                      (username, email, hashed_password))
@@ -125,13 +131,12 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = c.fetchone()
         conn.close()
-        
+
         if user and check_password_hash(user[3], password):
             session['user_id'] = user[0]
             session['username'] = user[1]
@@ -155,7 +160,7 @@ def dashboard():
         return redirect(url_for('login'))
     
     # Get user's prediction history
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("""SELECT prediction_result, confidence, prediction_date 
                  FROM predictions WHERE user_id = ? 
@@ -191,14 +196,14 @@ def predict():
             
             # Load preprocessing components if they exist
             try:
-                scaler = joblib.load('scaler.sav')
+                scaler = joblib.load(os.path.join(BASE_DIR, 'scaler.sav'))
                 print("Scaler loaded successfully")
             except FileNotFoundError:
                 scaler = None
                 print("Warning: Scaler not found, using raw values")
             
             try:
-                label_encoders = joblib.load('label_encoders.sav')
+                label_encoders = joblib.load(os.path.join(BASE_DIR, 'label_encoders.sav'))
                 print("Label encoders loaded successfully")
             except FileNotFoundError:
                 label_encoders = {}
@@ -253,7 +258,7 @@ def predict():
             print(f"Prediction: {result}, Confidence: {confidence:.2f}%")
             
             # Save prediction to database
-            conn = sqlite3.connect('users.db')
+            conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
             c.execute("""INSERT INTO predictions 
                          (user_id, prediction_result, confidence, input_features) 
@@ -288,7 +293,7 @@ def analytics():
     
     # Optimized analytics data retrieval with connection management
     try:
-        conn = sqlite3.connect('users.db', timeout=10)  # Add timeout
+        conn = sqlite3.connect(DB_PATH, timeout=10)  # Add timeout
         conn.row_factory = sqlite3.Row  # Enable column access by name
         c = conn.cursor()
         
