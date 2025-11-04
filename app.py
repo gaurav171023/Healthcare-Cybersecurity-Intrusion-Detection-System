@@ -42,6 +42,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Ensure DB tables exist at import time (important when running under gunicorn)
+init_db()
+
 # Load the trained model and preprocessing components
 try:
     model = joblib.load('model.sav')
