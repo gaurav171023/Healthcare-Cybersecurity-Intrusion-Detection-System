@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import pandas as pd
 import numpy as np
 import joblib
@@ -353,3 +353,31 @@ def analytics():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+
+
+@app.route('/health')
+def health():
+    """Health endpoint reporting model and DB status.
+
+    Returns JSON with two booleans: model_loaded and db_ok. Also returns a
+    list of existing tables for debugging.
+    """
+    model_loaded = (model is not None)
+    db_ok = False
+    tables = []
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5)
+        c = conn.cursor()
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [row[0] for row in c.fetchall()]
+        db_ok = 'users' in tables and 'predictions' in tables
+        conn.close()
+    except Exception as e:
+        # Keep db_ok False and include no tables
+        tables = []
+
+    return jsonify({
+        'model_loaded': model_loaded,
+        'db_ok': db_ok,
+        'tables': tables
+    })
