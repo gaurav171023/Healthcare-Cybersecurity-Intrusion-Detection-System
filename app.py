@@ -59,9 +59,21 @@ def init_db():
 init_db()
 
 # Load the trained model and preprocessing components
+model = None
+model_load_error = None
 try:
     model = joblib.load(MODEL_PATH)
     print("Model loaded successfully!")
+except FileNotFoundError:
+    model = None
+    model_load_error = 'file-not-found'
+    print("Warning: Model file not found. Please train the model first.")
+except Exception as e:
+    # Catch broad exceptions (ModuleNotFoundError, version mismatch, etc.)
+    model = None
+    model_load_error = str(e)
+    print("Warning: Failed to load model.sav — continuing without model.")
+    print(f"Model load error: {repr(e)}")
 
     # Load the correct feature names that match the trained model
     FEATURE_NAMES_PATH = os.path.join(BASE_DIR, 'feature_names.sav')
