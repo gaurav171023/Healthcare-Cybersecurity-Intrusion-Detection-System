@@ -16,6 +16,14 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'users.db')
 MODEL_PATH = os.path.join(BASE_DIR, 'model.sav')
 
+# --- Safe startup checks (prevent Render crash when files are missing) ---
+if not os.path.exists(MODEL_PATH):
+    print("⚠️ model.sav not found — skipping model load to prevent crash")
+
+if not os.path.exists(DB_PATH):
+    print("⚠️ users.db not found — creating new empty database file")
+    open(DB_PATH, 'a').close()
+
 # Database setup
 def init_db():
     conn = sqlite3.connect(DB_PATH)
