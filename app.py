@@ -61,6 +61,7 @@ init_db()
 # Load the trained model and preprocessing components
 model = None
 model_load_error = None
+feature_names = []
 try:
     model = joblib.load(MODEL_PATH)
     print("Model loaded successfully!")
@@ -75,36 +76,31 @@ except Exception as e:
     print("Warning: Failed to load model.sav — continuing without model.")
     print(f"Model load error: {repr(e)}")
 
-    # Load the correct feature names that match the trained model
-    FEATURE_NAMES_PATH = os.path.join(BASE_DIR, 'feature_names.sav')
-    try:
-        feature_names = joblib.load(FEATURE_NAMES_PATH)
-        print(f"Feature names loaded successfully! Model expects {len(feature_names)} features")
-        print(f"Features: {feature_names[:5]}...")
-    except FileNotFoundError:
-        print("Warning: feature_names.sav not found. Using fallback feature names.")
-        # Fallback feature names if file doesn't exist
-        feature_names = [
-            'duration', 'protocol_type', 'service', 'flag', 'src_bytes',
-            'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
-            'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell',
-            'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
-            'num_access_files', 'num_outbound_cmds', 'is_host_login',
-            'is_guest_login', 'count', 'srv_count', 'serror_rate',
-            'srv_serror_rate', 'rerror_rate', 'srv_rerror_rate',
-            'same_srv_rate', 'diff_srv_rate', 'srv_diff_host_rate',
-            'dst_host_count', 'dst_host_srv_count', 'dst_host_same_srv_rate',
-            'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
-            'dst_host_srv_diff_host_rate', 'dst_host_serror_rate',
-            'dst_host_srv_serror_rate', 'dst_host_rerror_rate',
-            'dst_host_srv_rerror_rate',
-            'device_type', 'protocol', 'user_role', 'department'
-        ]
-        
+# Load the correct feature names that match the trained model (try regardless)
+FEATURE_NAMES_PATH = os.path.join(BASE_DIR, 'feature_names.sav')
+try:
+    feature_names = joblib.load(FEATURE_NAMES_PATH)
+    print(f"Feature names loaded successfully! Model expects {len(feature_names)} features")
+    print(f"Features: {feature_names[:5]}...")
 except FileNotFoundError:
-    model = None
-    feature_names = []
-    print("Warning: Model file not found. Please train the model first.")
+    print("Warning: feature_names.sav not found. Using fallback feature names.")
+    # Fallback feature names if file doesn't exist
+    feature_names = [
+        'duration', 'protocol_type', 'service', 'flag', 'src_bytes',
+        'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
+        'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell',
+        'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
+        'num_access_files', 'num_outbound_cmds', 'is_host_login',
+        'is_guest_login', 'count', 'srv_count', 'serror_rate',
+        'srv_serror_rate', 'rerror_rate', 'srv_rerror_rate',
+        'same_srv_rate', 'diff_srv_rate', 'srv_diff_host_rate',
+        'dst_host_count', 'dst_host_srv_count', 'dst_host_same_srv_rate',
+        'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
+        'dst_host_srv_diff_host_rate', 'dst_host_serror_rate',
+        'dst_host_srv_serror_rate', 'dst_host_rerror_rate',
+        'dst_host_srv_rerror_rate',
+        'device_type', 'protocol', 'user_role', 'department'
+    ]
 
 attack_types = {
     0: 'Normal',
